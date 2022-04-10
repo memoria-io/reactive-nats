@@ -10,7 +10,7 @@
     </parent>
     <!--suppress MavenRedundantGroupId -->
     <groupId>io.memoria</groupId>
-    <artifactId>mnats</artifactId>
+    <artifactId>reactive-nats</artifactId>
     <version>0.0.1</version>
     <packaging>jar</packaging>
 

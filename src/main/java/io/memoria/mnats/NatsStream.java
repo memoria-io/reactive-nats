@@ -8,7 +8,7 @@ public interface NatsStream extends Stream {
   String TOPIC_PARTITION_SPLIT_TOKEN = ".";
   int NATS_MIN_DELAY = 20;
 
-  static Stream create(MNatsConfig config) throws IOException, InterruptedException {
+  static Stream create(NatsConfig config) throws IOException, InterruptedException {
     return new DefaultNatsStream(config);
   }
 }

@@ -24,11 +24,11 @@ import java.time.Duration;
 @SuppressWarnings("ClassCanBeRecord")
 class DefaultNatsStream implements NatsStream {
   private static final Logger log = LoggerFactory.getLogger(DefaultNatsStream.class.getName());
-  private final MNatsConfig config;
+  private final NatsConfig config;
   private final Connection nc;
   private final JetStream js;
 
-  DefaultNatsStream(MNatsConfig config) throws IOException, InterruptedException {
+  DefaultNatsStream(NatsConfig config) throws IOException, InterruptedException {
     this.config = config;
     this.nc = Nats.connect(config.url());
     this.js = nc.jetStream();
@@ -41,7 +41,7 @@ class DefaultNatsStream implements NatsStream {
 
   @Override
   public Mono<Long> size(String topic, int partition) {
-    var subject = MNatsUtils.toSubject(topic, partition);
+    var subject = NatsUtils.toSubject(topic, partition);
     return Mono.fromCallable(() -> subjectCount(subject));
   }
 
@@ -49,12 +49,12 @@ class DefaultNatsStream implements NatsStream {
   public Flux<Msg> subscribe(String topic, int partition, long offset) {
     return Mono.fromCallable(() -> pullSubscription(topic, partition, offset))
                .flatMapMany(this::pull)
-               .map(MNatsUtils::toMsg);
+               .map(NatsUtils::toMsg);
   }
 
   private Mono<Msg> publish(Msg msg) {
     var pubOpt = PublishOptions.builder().messageId(msg.id().value()).build();
-    var message = MNatsUtils.toNatsMsg(msg);
+    var message = NatsUtils.toNatsMsg(msg);
     return Mono.fromFuture(() -> js.publishAsync(message, pubOpt)).thenReturn(msg);
   }
 
@@ -68,7 +68,7 @@ class DefaultNatsStream implements NatsStream {
 
   private JetStreamSubscription pullSubscription(String topic, int partition, long offset)
           throws IOException, JetStreamApiException {
-    var subject = MNatsUtils.toSubject(topic, partition);
+    var subject = NatsUtils.toSubject(topic, partition);
     var consumerName = "%s_consumer".formatted(subject);
     var cc = ConsumerConfiguration.builder().durable(consumerName).startSequence(offset).build();
     var pullOptions = PullSubscribeOptions.builder().configuration(cc).build();

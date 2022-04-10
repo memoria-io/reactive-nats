@@ -9,9 +9,9 @@ import java.nio.charset.StandardCharsets;
 
 import static io.memoria.mnats.NatsStream.TOPIC_PARTITION_SPLIT_TOKEN;
 
-class MNatsUtils {
+class NatsUtils {
 
-  private MNatsUtils() {}
+  private NatsUtils() {}
 
   public static Msg toMsg(Message msg) {
     var subject = msg.getSubject();
