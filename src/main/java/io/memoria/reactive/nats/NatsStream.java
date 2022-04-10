@@ -1,4 +1,4 @@
-package io.memoria.mnats;
+package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.stream.Stream;
 

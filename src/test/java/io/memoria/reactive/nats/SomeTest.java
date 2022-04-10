@@ -1,4 +1,4 @@
-package io.memoria.mnats;
+package io.memoria.reactive.nats;
 
 import io.vavr.collection.List;
 import org.junit.jupiter.api.Test;

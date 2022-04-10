@@ -1,4 +1,4 @@
-package io.memoria.mnats;
+package io.memoria.reactive.nats;
 
 public class TestUtils {
   private TestUtils() {}

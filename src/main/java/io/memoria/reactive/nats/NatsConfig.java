@@ -1,6 +1,6 @@
-package io.memoria.mnats;
+package io.memoria.reactive.nats;
 
-import static io.memoria.mnats.NatsStream.NATS_MIN_DELAY;
+import static io.memoria.reactive.nats.NatsStream.NATS_MIN_DELAY;
 
 public record NatsConfig(String url, String streamName, long pullMaxWait, long pullEveryMillis, int fetchBatchSize) {
   public NatsConfig {

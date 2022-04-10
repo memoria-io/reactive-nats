@@ -1,4 +1,4 @@
-package io.memoria.mnats;
+package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
@@ -6,8 +6,6 @@ import io.nats.client.Message;
 import io.nats.client.impl.NatsMessage;
 
 import java.nio.charset.StandardCharsets;
-
-import static io.memoria.mnats.NatsStream.TOPIC_PARTITION_SPLIT_TOKEN;
 
 class NatsUtils {
 
@@ -28,7 +26,7 @@ class NatsUtils {
   }
 
   static int getPartition(String subject) {
-    var lastIdx = subject.lastIndexOf(TOPIC_PARTITION_SPLIT_TOKEN);
+    var lastIdx = subject.lastIndexOf(NatsStream.TOPIC_PARTITION_SPLIT_TOKEN);
     var partition = 0;
     if (lastIdx > -1) {
       partition = Integer.parseInt(subject.substring(lastIdx));
@@ -37,6 +35,6 @@ class NatsUtils {
   }
 
   static String toSubject(String topic, int partition) {
-    return "%s%s%d".formatted(topic, TOPIC_PARTITION_SPLIT_TOKEN, partition);
+    return "%s%s%d".formatted(topic, NatsStream.TOPIC_PARTITION_SPLIT_TOKEN, partition);
   }
 }
