@@ -64,6 +64,6 @@ class DefaultNatsStream implements NatsStream {
     return Flux.generate((SynchronousSink<List<Message>> sink) -> {
       var msgs = sub.fetch(config.fetchBatchSize(), config.pullMaxWait());
       sink.next(msgs);
-    }).flatMap(Flux::fromIterable).delayElements(delay);
+    }).delayElements(delay).flatMap(Flux::fromIterable);
   }
 }
