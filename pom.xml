@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.memoria</groupId>
+        <artifactId>jbom</artifactId>
+        <version>19.0.0</version>
+    </parent>
+    <!--suppress MavenRedundantGroupId -->
+    <groupId>io.memoria</groupId>
+    <artifactId>mnats</artifactId>
+    <version>0.0.1</version>
+    <packaging>jar</packaging>
+
+    <name>${project.groupId}.${project.artifactId}</name>
+    <description>massandra Parent Pom</description>
+    <url>https://memoria.io/node</url>
+    <organization>
+        <name>memoria</name>
+        <url>https://memoria.io</url>
+    </organization>
+    <properties>
+        <reactive.version>0.355.0</reactive.version>
+        <reactor.version>2020.0.17</reactor.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/memoria-io/*</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.projectreactor</groupId>
+                <artifactId>reactor-bom</artifactId>
+                <version>${reactor.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    <dependencies>
+        <!-- ===============================================================   -->
+        <!-- Reactive Dependencies                                             -->
+        <!-- ===============================================================   -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ===============================================================   -->
+        <!-- Memoria Reactive Dependencies                                     -->
+        <!-- ===============================================================   -->
+        <dependency>
+            <groupId>io.memoria.reactive</groupId>
+            <artifactId>core</artifactId>
+            <version>${reactive.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.memoria.reactive</groupId>
+            <artifactId>text</artifactId>
+            <version>${reactive.version}</version>
+        </dependency>
+        
+        <!-- ===============================================================   -->
+        <!-- Nats Dependencies                                                 -->
+        <!-- ===============================================================   -->
+        <dependency>
+            <groupId>io.nats</groupId>
+            <artifactId>jnats</artifactId>
+            <version>2.14.0</version>
+        </dependency>
+
+    </dependencies>
+</project>
