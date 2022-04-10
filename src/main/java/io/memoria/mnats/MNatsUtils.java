@@ -3,6 +3,7 @@ package io.memoria.mnats;
 import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
 import io.nats.client.Message;
+import io.nats.client.impl.NatsMessage;
 
 import java.nio.charset.StandardCharsets;
 
@@ -21,6 +22,11 @@ class MNatsUtils {
                    new String(msg.getData(), StandardCharsets.UTF_8));
   }
 
+  public static Message toNatsMsg(Msg msg) {
+    var subject = toSubject(msg.topic(), msg.partition());
+    return NatsMessage.builder().subject(subject).data(msg.value()).build();
+  }
+
   static int getPartition(String subject) {
     var lastIdx = subject.lastIndexOf(TOPIC_PARTITION_SPLIT_TOKEN);
     var partition = 0;
@@ -29,15 +35,6 @@ class MNatsUtils {
     }
     return partition;
   }
-
-//  public static long topicSize(String topic, int partition, Map<String, Object> conf) {
-  //    var consumer = new KafkaConsumer<Long, String>(conf.toJavaMap());
-  //    var tp = new TopicPartition(topic, partition);
-  //    var tpCol = List.of(tp).toJavaList();
-  //    consumer.assign(tpCol);
-  //    consumer.seekToEnd(tpCol);
-  //    return consumer.position(tp);
-  //  }
 
   static String toSubject(String topic, int partition) {
     return "%s%s%d".formatted(topic, TOPIC_PARTITION_SPLIT_TOKEN, partition);

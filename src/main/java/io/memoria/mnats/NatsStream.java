@@ -11,5 +11,4 @@ public interface NatsStream extends Stream {
   static Stream create(MNatsConfig config) throws IOException, InterruptedException {
     return new DefaultNatsStream(config);
   }
-
 }
