@@ -3,6 +3,8 @@ package io.memoria.reactive.nats;
 import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
 import io.memoria.reactive.core.stream.Stream;
+import io.nats.client.JetStreamApiException;
+import io.nats.client.api.StorageType;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -23,9 +25,9 @@ class DefaultNatsStreamTest {
 
   static {
     try {
-      var config = new NatsConfig("nats://localhost:4222", "nats_mem_stream", 1, StreamStorage.MEMORY, 100, 200, 100);
+      var config = new NatsConfig("nats://localhost:4222", "nats_mem_stream", 1, StorageType.Memory, 100, 200, 100);
       repo = NatsStream.create(config);
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException | InterruptedException | JetStreamApiException e) {
       throw new IllegalArgumentException(e);
     }
   }

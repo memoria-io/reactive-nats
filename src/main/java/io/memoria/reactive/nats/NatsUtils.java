@@ -11,6 +11,7 @@ import io.nats.client.PublishOptions;
 import io.nats.client.PullSubscribeOptions;
 import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.api.PublishAck;
+import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.api.StreamState;
 import io.nats.client.api.Subject;
@@ -25,6 +26,24 @@ import java.util.concurrent.CompletableFuture;
 class NatsUtils {
 
   private NatsUtils() {}
+
+  public static StreamInfo createOrUpdateStream(Connection nc, StreamConfiguration options)
+          throws IOException, JetStreamApiException {
+    var streamNames = nc.jetStreamManagement().getStreamNames();
+    if (streamNames.contains(options.getName()))
+      return nc.jetStreamManagement().updateStream(options);
+    else
+      return nc.jetStreamManagement().addStream(options);
+  }
+
+  public static int getPartition(String subject) {
+    var lastIdx = subject.lastIndexOf(NatsStream.TOPIC_PARTITION_SPLIT_TOKEN);
+    var partition = 0;
+    if (lastIdx > -1) {
+      partition = Integer.parseInt(subject.substring(lastIdx));
+    }
+    return partition;
+  }
 
   public static CompletableFuture<PublishAck> publish(JetStream js, Message message, PublishOptions pubOpt) {
     return js.publishAsync(message, pubOpt);
@@ -76,16 +95,7 @@ class NatsUtils {
     return NatsMessage.builder().subject(subject).data(msg.value()).build();
   }
 
-  static int getPartition(String subject) {
-    var lastIdx = subject.lastIndexOf(NatsStream.TOPIC_PARTITION_SPLIT_TOKEN);
-    var partition = 0;
-    if (lastIdx > -1) {
-      partition = Integer.parseInt(subject.substring(lastIdx));
-    }
-    return partition;
-  }
-
-  static String toSubject(String topic, int partition) {
+  public static String toSubject(String topic, int partition) {
     return "%s%s%d".formatted(topic, NatsStream.TOPIC_PARTITION_SPLIT_TOKEN, partition);
   }
 }

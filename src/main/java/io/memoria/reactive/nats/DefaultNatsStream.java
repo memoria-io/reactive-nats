@@ -3,10 +3,12 @@ package io.memoria.reactive.nats;
 import io.memoria.reactive.core.stream.Msg;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
+import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
 import io.nats.client.Nats;
 import io.nats.client.PublishOptions;
+import io.nats.client.api.StreamConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -21,11 +23,19 @@ class DefaultNatsStream implements NatsStream {
   private final NatsConfig config;
   private final Connection nc;
   private final JetStream js;
+  private final StreamConfiguration.Builder streamConfigs;
 
-  DefaultNatsStream(NatsConfig config) throws IOException, InterruptedException {
+  DefaultNatsStream(NatsConfig config) throws IOException, InterruptedException, JetStreamApiException {
     this.config = config;
     this.nc = Nats.connect(config.url());
     this.js = nc.jetStream();
+    this.streamConfigs = StreamConfiguration.builder()
+                                            .name(config.streamName())
+                                            .storageType(config.streamStorage())
+                                            .denyDelete(true)
+                                            .denyPurge(true);
+    var streamInfo = NatsUtils.createOrUpdateStream(nc, this.streamConfigs.build());
+    log.info(streamInfo.toString());
   }
 
   @Override

@@ -2,6 +2,7 @@ package io.memoria.reactive.nats;
 
 import io.nats.client.JetStreamApiException;
 import io.nats.client.Nats;
+import io.nats.client.api.StorageType;
 import io.vavr.collection.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -22,7 +23,7 @@ class SomeTest {
   @Test
   void nats() {
     try {
-      var config = new NatsConfig("nats://localhost:4222", "nats_mem_stream", 1, StreamStorage.MEMORY, 100, 200, 100);
+      var config = new NatsConfig("nats://localhost:4222", "nats_mem_stream", 1, StorageType.Memory, 100, 200, 100);
       var nc = Nats.connect(config.url());
 
       var info = nc.jetStreamManagement().getStreamInfo(config.streamName());
