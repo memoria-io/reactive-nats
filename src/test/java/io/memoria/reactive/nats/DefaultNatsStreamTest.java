@@ -4,7 +4,7 @@ import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
 import io.memoria.reactive.core.stream.Stream;
 import io.nats.client.JetStreamApiException;
-import io.nats.client.api.StorageType;
+import io.vavr.collection.HashSet;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -15,17 +15,22 @@ import reactor.test.StepVerifier;
 import java.io.IOException;
 import java.util.Random;
 
+import static io.nats.client.api.StorageType.File;
+import static io.nats.client.api.StorageType.Memory;
+
 @TestMethodOrder(OrderAnnotation.class)
 class DefaultNatsStreamTest {
-  private static final Random random = new Random();
-  private static final int MSG_COUNT = 1000;
-  private static final String TOPIC = "node" + random.nextInt(1000);
+  private static final String STREAM = "default_nats_stream";
+  private static final Random r = new Random();
+  private static final String TOPIC = "node" + r.nextInt(1000);
   private static final int PARTITION = 0;
+  private static final String subject = NatsUtils.toSubject(TOPIC, PARTITION);
+  private static final int MSG_COUNT = 1000;
   private static final Stream repo;
 
   static {
     try {
-      var config = new NatsConfig("nats://localhost:4222", "nats_mem_stream", 1, StorageType.Memory, 100, 200, 100);
+      var config = new NatsConfig("nats://localhost:4222", STREAM, Memory, HashSet.of(subject), 1, 100, 200, 100);
       repo = NatsStream.create(config);
     } catch (IOException | InterruptedException | JetStreamApiException e) {
       throw new IllegalArgumentException(e);

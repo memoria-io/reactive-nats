@@ -1,13 +1,15 @@
 package io.memoria.reactive.nats;
 
 import io.nats.client.api.StorageType;
+import io.vavr.collection.Set;
 
 import static io.memoria.reactive.nats.NatsStream.NATS_MIN_DELAY;
 
 public record NatsConfig(String url,
                          String streamName,
-                         int streamReplication,
                          StorageType streamStorage,
+                         Set<String> subjects,
+                         int streamReplication,
                          long pullMaxWait,
                          long pullEveryMillis,
                          int fetchBatchSize) {

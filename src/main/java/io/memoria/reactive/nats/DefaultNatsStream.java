@@ -32,6 +32,7 @@ class DefaultNatsStream implements NatsStream {
     this.streamConfigs = StreamConfiguration.builder()
                                             .name(config.streamName())
                                             .storageType(config.streamStorage())
+                                            .subjects(config.subjects().toJavaSet())
                                             .denyDelete(true)
                                             .denyPurge(true);
     var streamInfo = NatsUtils.createOrUpdateStream(nc, this.streamConfigs.build());
