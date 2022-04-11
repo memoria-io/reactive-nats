@@ -10,8 +10,11 @@ import io.nats.client.Nats;
 import io.nats.client.PublishOptions;
 import io.nats.client.PullSubscribeOptions;
 import io.nats.client.api.ConsumerConfiguration;
+import io.nats.client.api.StreamInfo;
+import io.nats.client.api.StreamState;
 import io.nats.client.api.Subject;
 import io.vavr.collection.List;
+import io.vavr.control.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -76,10 +79,25 @@ class DefaultNatsStream implements NatsStream {
   }
 
   private long subjectCount(String subjectName) throws IOException, JetStreamApiException {
-    var subjects = List.ofAll(nc.jetStreamManagement()
-                                .getStreamInfo(config.streamName())
-                                .getStreamState()
-                                .getSubjects());
-    return subjects.find(s -> s.getName().equalsIgnoreCase(subjectName)).map(Subject::getCount).getOrElse(0L);
+    return streamInfo(subjectName).map(StreamInfo::getStreamState)
+                                  .map(StreamState::getSubjects)
+                                  .map(List::ofAll)
+                                  .getOrElse(List::empty)
+                                  .find(s -> s.getName().equalsIgnoreCase(subjectName))
+                                  .map(Subject::getCount)
+                                  .getOrElse(0L);
+
+  }
+
+  public Option<StreamInfo> streamInfo(String streamName) throws IOException, JetStreamApiException {
+    try {
+      return Option.some(nc.jetStreamManagement().getStreamInfo(streamName));
+    } catch (JetStreamApiException e) {
+      if (e.getErrorCode() == 404) {
+        return Option.none();
+      } else {
+        throw e;
+      }
+    }
   }
 }
