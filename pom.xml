@@ -76,7 +76,7 @@
             <artifactId>text</artifactId>
             <version>${reactive.version}</version>
         </dependency>
-        
+
         <!-- ===============================================================   -->
         <!-- Nats Dependencies                                                 -->
         <!-- ===============================================================   -->
