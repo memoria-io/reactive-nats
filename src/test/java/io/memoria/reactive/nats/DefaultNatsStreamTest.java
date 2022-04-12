@@ -22,7 +22,7 @@ class DefaultNatsStreamTest {
   private static final int MSG_COUNT = 100000;
   private static final String STREAM = "file_nats_stream";
   private static final Random r = new Random();
-  private static final String topic = "node" + r.nextInt(1000);
+  private static final String topic = "topic" + r.nextInt(1000);
   private static final int partition = 0;
   private static final String subject = NatsUtils.toSubject(topic, partition);
   private static final Stream repo;
