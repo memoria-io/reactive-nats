@@ -15,7 +15,6 @@ import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.api.StreamState;
 import io.nats.client.api.Subject;
-import io.nats.client.impl.NatsMessage;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 
@@ -40,13 +39,16 @@ class NatsUtils {
     var lastIdx = subject.lastIndexOf(NatsStream.TOPIC_PARTITION_SPLIT_TOKEN);
     var partition = 0;
     if (lastIdx > -1) {
-      partition = Integer.parseInt(subject.substring(lastIdx));
+      partition = Integer.parseInt(subject.substring(lastIdx + 1));
     }
     return partition;
   }
 
-  public static CompletableFuture<PublishAck> publish(JetStream js, Message message, PublishOptions pubOpt) {
-    return js.publishAsync(message, pubOpt);
+  public static CompletableFuture<PublishAck> publish(JetStream js,
+                                                      String subject,
+                                                      String message,
+                                                      PublishOptions pubOpt) {
+    return js.publishAsync(subject, message.getBytes(StandardCharsets.UTF_8), pubOpt);
   }
 
   public static JetStreamSubscription pullSubscription(JetStream js, String topic, int partition, long offset)
@@ -82,18 +84,12 @@ class NatsUtils {
   }
 
   public static Msg toMsg(Message msg) {
-    var subject = msg.getSubject();
-    int partition = getPartition(subject);
-    return new Msg(subject,
-                   partition,
-                   Id.of(msg.metaData().streamSequence()),
-                   new String(msg.getData(), StandardCharsets.UTF_8));
+    return new Msg(Id.of(msg.metaData().streamSequence()), new String(msg.getData(), StandardCharsets.UTF_8));
   }
 
-  public static Message toNatsMsg(Msg msg) {
-    var subject = toSubject(msg.topic(), msg.partition());
-    return NatsMessage.builder().subject(subject).data(msg.value()).build();
-  }
+  //  public static Message toNatsMsg(Msg msg) {
+  //    return NatsMessage.builder().subject(subject).data(msg.value()).build();
+  //  }
 
   public static String toSubject(String topic, int partition) {
     return "%s%s%d".formatted(topic, NatsStream.TOPIC_PARTITION_SPLIT_TOKEN, partition);

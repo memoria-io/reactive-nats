@@ -8,6 +8,7 @@ import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
 import io.nats.client.Nats;
 import io.nats.client.PublishOptions;
+import io.nats.client.api.PublishAck;
 import io.nats.client.api.StreamConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +41,9 @@ class DefaultNatsStream implements NatsStream {
   }
 
   @Override
-  public Flux<Msg> publish(Flux<Msg> msgs) {
-    return msgs.flatMap(this::publish);
+  public Flux<Msg> publish(String topic, int partition, Flux<Msg> msgs) {
+    String subject = NatsUtils.toSubject(topic, partition);
+    return msgs.concatMap(msg -> publish(subject, msg.id().value(), msg.value()).thenReturn(msg));
   }
 
   @Override
@@ -57,10 +59,9 @@ class DefaultNatsStream implements NatsStream {
                .map(NatsUtils::toMsg);
   }
 
-  private Mono<Msg> publish(Msg msg) {
-    var pubOpt = PublishOptions.builder().messageId(msg.id().value()).build();
-    var message = NatsUtils.toNatsMsg(msg);
-    return Mono.fromFuture(() -> NatsUtils.publish(js, message, pubOpt)).thenReturn(msg);
+  private Mono<PublishAck> publish(String subject, String id, String msg) {
+    var pubOpt = PublishOptions.builder().messageId(id).build();
+    return Mono.fromFuture(() -> NatsUtils.publish(js, subject, msg, pubOpt));
   }
 
   private Flux<Message> pull(JetStreamSubscription sub) {

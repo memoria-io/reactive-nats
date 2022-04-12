@@ -22,7 +22,7 @@
         <url>https://memoria.io</url>
     </organization>
     <properties>
-        <reactive.version>0.355.0</reactive.version>
+        <reactive.version>0.356.0</reactive.version>
         <reactor.version>2020.0.17</reactor.version>
     </properties>
 

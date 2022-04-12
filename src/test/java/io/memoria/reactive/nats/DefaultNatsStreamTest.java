@@ -15,17 +15,16 @@ import reactor.test.StepVerifier;
 import java.io.IOException;
 import java.util.Random;
 
-import static io.nats.client.api.StorageType.File;
 import static io.nats.client.api.StorageType.Memory;
 
 @TestMethodOrder(OrderAnnotation.class)
 class DefaultNatsStreamTest {
+  private static final int MSG_COUNT = 1000;
   private static final String STREAM = "default_nats_stream";
   private static final Random r = new Random();
   private static final String TOPIC = "node" + r.nextInt(1000);
   private static final int PARTITION = 0;
   private static final String subject = NatsUtils.toSubject(TOPIC, PARTITION);
-  private static final int MSG_COUNT = 1000;
   private static final Stream repo;
 
   static {
@@ -41,9 +40,9 @@ class DefaultNatsStreamTest {
   @Order(1)
   void publish() {
     // Given
-    var msgs = Flux.range(0, MSG_COUNT).map(i -> new Msg(TOPIC, PARTITION, Id.of(i), "hello" + i));
+    var msgs = Flux.range(0, MSG_COUNT).map(i -> new Msg(Id.of(i), "hello" + i));
     // When
-    var pub = repo.publish(msgs);
+    var pub = repo.publish(TOPIC, PARTITION, msgs);
     // Then
     StepVerifier.create(pub).expectNextCount(MSG_COUNT).verifyComplete();
   }
@@ -54,16 +53,16 @@ class DefaultNatsStreamTest {
     var size = repo.size(TOPIC, PARTITION);
     StepVerifier.create(size).expectNext(0L).verifyComplete();
   }
-  //
-  //  @Test
-  //  @Order(2)
-  //  void subscribe() {
-  //    // Given previous publish ran successfully
-  //    // When
-  //    var sub = repo.subscribe(TOPIC, PARTITION, 0).take(MSG_COUNT);
-  //    // Given
-  //    StepVerifier.create(sub).expectNextCount(MSG_COUNT).verifyComplete();
-  //  }
+
+  @Test
+  @Order(2)
+  void subscribe() {
+    // Given previous publish ran successfully
+    // When
+    var sub = repo.subscribe(TOPIC, PARTITION, 0).take(MSG_COUNT);
+    // Given
+    StepVerifier.create(sub).expectNextCount(MSG_COUNT).verifyComplete();
+  }
   //
   //  @Test
   //  @Order(3)
