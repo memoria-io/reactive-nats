@@ -7,7 +7,7 @@ import java.io.IOException;
 
 public interface NatsStream extends Stream {
   String TOPIC_PARTITION_SPLIT_TOKEN = "_";
-  int NATS_MIN_DELAY = 20;
+  String MSG_ID_HEADER = "MSG_ID_HEADER";
 
   static Stream create(NatsConfig config) throws IOException, InterruptedException, JetStreamApiException {
     return new DefaultNatsStream(config);

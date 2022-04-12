@@ -7,20 +7,22 @@ import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
-import io.nats.client.PublishOptions;
 import io.nats.client.PullSubscribeOptions;
 import io.nats.client.api.ConsumerConfiguration;
-import io.nats.client.api.PublishAck;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
+import io.nats.client.api.StreamInfoOptions;
 import io.nats.client.api.StreamState;
 import io.nats.client.api.Subject;
+import io.nats.client.impl.Headers;
+import io.nats.client.impl.NatsMessage;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
+
+import static io.memoria.reactive.nats.NatsStream.MSG_ID_HEADER;
 
 class NatsUtils {
 
@@ -44,13 +46,6 @@ class NatsUtils {
     return partition;
   }
 
-  public static CompletableFuture<PublishAck> publish(JetStream js,
-                                                      String subject,
-                                                      String message,
-                                                      PublishOptions pubOpt) {
-    return js.publishAsync(subject, message.getBytes(StandardCharsets.UTF_8), pubOpt);
-  }
-
   public static JetStreamSubscription pullSubscription(JetStream js, String topic, int partition, long offset)
           throws IOException, JetStreamApiException {
     var subject = toSubject(topic, partition);
@@ -63,7 +58,8 @@ class NatsUtils {
   public static Option<StreamInfo> streamInfo(Connection nc, String streamName)
           throws IOException, JetStreamApiException {
     try {
-      return Option.some(nc.jetStreamManagement().getStreamInfo(streamName));
+      var opts = StreamInfoOptions.allSubjects();
+      return Option.some(nc.jetStreamManagement().getStreamInfo(streamName, opts));
     } catch (JetStreamApiException e) {
       if (e.getErrorCode() == 404) {
         return Option.none();
@@ -73,8 +69,8 @@ class NatsUtils {
     }
   }
 
-  public static long subjectSize(Connection nc, String subjectName) throws IOException, JetStreamApiException {
-    return streamInfo(nc, subjectName).map(StreamInfo::getStreamState)
+  public static long subjectSize(Connection nc,String stream, String subjectName) throws IOException, JetStreamApiException {
+    return streamInfo(nc, stream).map(StreamInfo::getStreamState)
                                       .map(StreamState::getSubjects)
                                       .map(List::ofAll)
                                       .getOrElse(List::empty)
@@ -83,13 +79,20 @@ class NatsUtils {
                                       .getOrElse(0L);
   }
 
-  public static Msg toMsg(Message msg) {
-    return new Msg(Id.of(msg.metaData().streamSequence()), new String(msg.getData(), StandardCharsets.UTF_8));
+  public static Msg toMsg(String topic, int partition, Message message) {
+    //    var id = Id.of(message.metaData().streamSequence());
+    var id = Id.of(message.getHeaders().getFirst(MSG_ID_HEADER));
+    var value = new String(message.getData(), StandardCharsets.UTF_8);
+    return new Msg(topic, partition, id, value);
   }
 
-  //  public static Message toNatsMsg(Msg msg) {
-  //    return NatsMessage.builder().subject(subject).data(msg.value()).build();
-  //  }
+  public static Message toMessage(Msg msg) {
+    var subject = toSubject(msg.topic(), msg.partition());
+    var headers = new Headers();
+    headers.add(MSG_ID_HEADER, msg.id().value());
+    var data = msg.value().getBytes(StandardCharsets.UTF_8);
+    return NatsMessage.builder().subject(subject).headers(headers).data(data).build();
+  }
 
   public static String toSubject(String topic, int partition) {
     return "%s%s%d".formatted(topic, NatsStream.TOPIC_PARTITION_SPLIT_TOKEN, partition);
