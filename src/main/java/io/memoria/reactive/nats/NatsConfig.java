@@ -8,7 +8,7 @@ public record NatsConfig(String url,
                          StorageType streamStorage,
                          Set<String> subjects,
                          int streamReplication,
-                         long pullMaxWait,
+                         long fetchWaitMillis,
                          int fetchBatchSize) {
-  
+
 }

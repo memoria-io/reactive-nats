@@ -20,16 +20,16 @@ import static io.nats.client.api.StorageType.File;
 @TestMethodOrder(OrderAnnotation.class)
 class DefaultNatsStreamTest {
   private static final int MSG_COUNT = 100000;
-  private static final String STREAM = "file_nats_stream";
   private static final Random r = new Random();
-  private static final String topic = "topic" + r.nextInt(1000);
+  private static final String stream = "some_new_stream" + r.nextInt(1000);
+  private static final String topic = stream + ".topic";
   private static final int partition = 0;
   private static final String subject = NatsUtils.toSubject(topic, partition);
   private static final Stream repo;
 
   static {
     try {
-      var config = new NatsConfig("nats://localhost:4222", STREAM, File, HashSet.of(subject), 1, 100, 100);
+      var config = new NatsConfig("nats://localhost:4222", stream, File, HashSet.of(subject), 1, 2000, 200);
       repo = NatsStream.create(config);
     } catch (IOException | InterruptedException | JetStreamApiException e) {
       throw new IllegalArgumentException(e);
@@ -45,24 +45,26 @@ class DefaultNatsStreamTest {
 
   @Test
   @Order(1)
-  void publish() {
+  void publish() throws InterruptedException {
     // Given
     var msgs = Flux.range(0, MSG_COUNT).map(i -> new Msg(topic, partition, Id.of(i), "hello" + i));
     // When
     var pub = repo.publish(msgs);
     // Then
     StepVerifier.create(pub).expectNextCount(MSG_COUNT).verifyComplete();
+    Thread.sleep(100);
   }
 
-  //  @Test
-  //  @Order(2)
-  //  void subscribe() {
-  //    // Given previous publish ran successfully
-  //    // When
-  //    var sub = repo.subscribe(TOPIC, PARTITION, 0).take(MSG_COUNT).doOnNext(System.out::println);
-  //    // Given
-  //    StepVerifier.create(sub).expectNextCount(MSG_COUNT).verifyComplete();
-  //  }
+  @Test
+  @Order(2)
+  void subscribe() {
+    // Given previous publish ran successfully
+    var offset = 500;
+    // When
+    var sub = repo.subscribe(topic, partition, offset).take(MSG_COUNT - offset).map(Msg::id);
+    // Given
+    StepVerifier.create(sub).expectNextCount(MSG_COUNT - offset).verifyComplete();
+  }
 
   @Test
   @Order(3)

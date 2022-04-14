@@ -7,8 +7,12 @@ import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
-import io.nats.client.PullSubscribeOptions;
+import io.nats.client.MessageHandler;
+import io.nats.client.PushSubscribeOptions;
+import io.nats.client.api.AckPolicy;
 import io.nats.client.api.ConsumerConfiguration;
+import io.nats.client.api.DeliverPolicy;
+import io.nats.client.api.ReplayPolicy;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 import io.nats.client.api.StreamInfoOptions;
@@ -18,6 +22,8 @@ import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsMessage;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -46,14 +52,18 @@ class NatsUtils {
     return partition;
   }
 
-  public static JetStreamSubscription pullSubscription(JetStream js, String topic, int partition, long offset)
+  public static JetStreamSubscription pushSubscription(JetStream js, String stream, String subject, long offset)
           throws IOException, JetStreamApiException {
-    var subject = toSubject(topic, partition);
-    var consumerName = "%s_consumer".formatted(subject);
-    var cc = ConsumerConfiguration.builder().durable(consumerName).startSequence(offset).build();
-    var pullOptions = PullSubscribeOptions.builder().configuration(cc).build();
-    return js.subscribe(subject, pullOptions);
+    var cc = ConsumerConfiguration.builder()
+                                  .ackPolicy(AckPolicy.None)
+                                  .startSequence(offset)
+                                  .replayPolicy(ReplayPolicy.Instant)
+                                  .deliverPolicy(DeliverPolicy.ByStartSequence)
+                                  .build();
+    var pushOptions = PushSubscribeOptions.builder().ordered(true).stream(stream).configuration(cc).build();
+    return js.subscribe(subject, pushOptions);
   }
+
 
   public static Option<StreamInfo> streamInfo(Connection nc, String streamName)
           throws IOException, JetStreamApiException {
@@ -69,14 +79,16 @@ class NatsUtils {
     }
   }
 
-  public static long subjectSize(Connection nc,String stream, String subjectName) throws IOException, JetStreamApiException {
+  public static long subjectSize(Connection nc, String stream, String subjectName)
+          throws IOException, JetStreamApiException {
     return streamInfo(nc, stream).map(StreamInfo::getStreamState)
-                                      .map(StreamState::getSubjects)
-                                      .map(List::ofAll)
-                                      .getOrElse(List::empty)
-                                      .find(s -> s.getName().equalsIgnoreCase(subjectName))
-                                      .map(Subject::getCount)
-                                      .getOrElse(0L);
+                                 .map(StreamState::getSubjects)
+                                 .flatMap(Option::of)
+                                 .map(List::ofAll)
+                                 .getOrElse(List::empty)
+                                 .find(s -> s.getName().equalsIgnoreCase(subjectName))
+                                 .map(Subject::getCount)
+                                 .getOrElse(0L);
   }
 
   public static Msg toMsg(String topic, int partition, Message message) {
