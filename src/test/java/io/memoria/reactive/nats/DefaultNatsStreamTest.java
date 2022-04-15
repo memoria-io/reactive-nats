@@ -19,8 +19,8 @@ import java.util.Random;
 class DefaultNatsStreamTest {
   private static final int MSG_COUNT = 100000;
   private static final Random r = new Random();
-  private static final String topic = "some_new_stream" + r.nextInt(1000);
-  private static final int partition = 0;
+  private static final String topic = "topic" + r.nextInt(1000);
+  private static final int partition = 1;
   private static final Stream repo;
 
   static {
