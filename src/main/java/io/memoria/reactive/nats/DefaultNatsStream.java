@@ -47,7 +47,7 @@ class DefaultNatsStream implements NatsStream {
 
   @Override
   public Mono<Long> size(String topic, int partition) {
-    return Mono.fromCallable(() -> Utils.subjectSize(nc, topic, partition));
+    return Mono.fromCallable(() -> Utils.size(nc, topic, partition));
   }
 
   @Override
