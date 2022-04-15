@@ -5,7 +5,6 @@ import io.memoria.reactive.core.stream.Msg;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
 import io.nats.client.Nats;
-import io.nats.client.impl.NatsMessage;
 import io.vavr.control.Try;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,6 @@ public class UtilsTest {
 
   @Test
   void toMsg() {
-    
+
   }
 }

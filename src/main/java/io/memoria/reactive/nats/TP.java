@@ -13,6 +13,14 @@ public record TP(String topic, int partition) {
     validateName(topic, partition);
   }
 
+  public String streamName() {
+    return "%s%s%d".formatted(topic, SPLIT_TOKEN, partition);
+  }
+
+  public String subjectName() {
+    return streamName() + SUBJECT;
+  }
+
   private void validateName(String name, int partition) {
     if (name == null || name.isEmpty()) {
       throw new IllegalArgumentException("Name can't be null or empty string");
@@ -39,14 +47,6 @@ public record TP(String topic, int partition) {
   public static TP fromStreamName(String streamName) {
     var tup = topicPartition(streamName);
     return new TP(tup._1, tup._2);
-  }
-
-  public String streamName() {
-    return "%s%s%d".formatted(topic, SPLIT_TOKEN, partition);
-  }
-
-  public String subjectName() {
-    return streamName() + SUBJECT;
   }
 
   private static Tuple2<String, Integer> topicPartition(String streamName) {
