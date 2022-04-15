@@ -1,6 +1,7 @@
 package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.stream.Msg;
+import io.memoria.reactive.nats.NatsConfig.TopicConfig;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
@@ -9,6 +10,10 @@ import io.nats.client.Message;
 import io.nats.client.Nats;
 import io.nats.client.PublishOptions;
 import io.nats.client.api.StreamConfiguration;
+import io.nats.client.api.StreamConfiguration.Builder;
+import io.nats.client.api.StreamInfo;
+import io.vavr.collection.Set;
+import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -28,14 +33,19 @@ class DefaultNatsStream implements NatsStream {
     this.config = config;
     this.nc = Nats.connect(config.url());
     this.js = nc.jetStream();
+    var streamInfo = createStreams(config.topics());
+    log.info(streamInfo.toString());
+  }
+
+  private Set<StreamInfo> createStreams(Set<TopicConfig> streams) {
     var streamConfigs = StreamConfiguration.builder()
-                                           .name(config.streamName())
                                            .storageType(config.streamStorage())
-                                           .subjects(config.subjects().toJavaSet())
                                            .denyDelete(true)
                                            .denyPurge(true);
-    var streamInfo = NatsUtils.createOrUpdateStream(nc, streamConfigs.build());
-    log.info(streamInfo.toString());
+    return streams.map(c -> streamConfigs.name(c.name()).subjects(c.partitionNames()))
+                  .map(Builder::build)
+                  .map(config -> Try.of(() -> NatsUtils.createOrUpdateStream(nc, config)))
+                  .map(Try::get);
   }
 
   @Override
@@ -45,14 +55,12 @@ class DefaultNatsStream implements NatsStream {
 
   @Override
   public Mono<Long> size(String topic, int partition) {
-    var subject = NatsUtils.toSubject(topic, partition);
-    return Mono.fromCallable(() -> NatsUtils.subjectSize(nc, config.streamName(), subject));
+    return Mono.fromCallable(() -> NatsUtils.subjectSize(nc, topic, partition));
   }
 
   @Override
   public Flux<Msg> subscribe(String topic, int partition, long offset) {
-    var subject = NatsUtils.toSubject(topic, partition);
-    return Mono.fromCallable(() -> createSubscription(subject, offset))
+    return Mono.fromCallable(() -> createSubscription(topic, partition, offset))
                .flatMapMany(this::fetch)
                .map(m -> NatsUtils.toMsg(topic, partition, m));
   }
@@ -65,9 +73,9 @@ class DefaultNatsStream implements NatsStream {
     }).flatMap(Mono::fromFuture).thenReturn(msg);
   }
 
-  private JetStreamSubscription createSubscription(String subject, long offset)
+  private JetStreamSubscription createSubscription(String topic, int partition, long offset)
           throws IOException, JetStreamApiException {
-    return NatsUtils.pushSubscription(js, config.streamName(), subject, offset + 1);
+    return NatsUtils.pushSubscription(js, topic, partition, offset + 1);
   }
 
   private Flux<Message> fetch(JetStreamSubscription sub) {

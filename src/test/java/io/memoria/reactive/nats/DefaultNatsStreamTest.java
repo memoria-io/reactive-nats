@@ -3,6 +3,7 @@ package io.memoria.reactive.nats;
 import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
 import io.memoria.reactive.core.stream.Stream;
+import io.memoria.reactive.nats.NatsConfig.TopicConfig;
 import io.nats.client.JetStreamApiException;
 import io.vavr.collection.HashSet;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -21,15 +22,14 @@ import static io.nats.client.api.StorageType.File;
 class DefaultNatsStreamTest {
   private static final int MSG_COUNT = 100000;
   private static final Random r = new Random();
-  private static final String stream = "some_new_stream" + r.nextInt(1000);
-  private static final String topic = stream + ".topic";
+  private static final String topic = "some_new_stream" + r.nextInt(1000);
   private static final int partition = 0;
-  private static final String subject = NatsUtils.toSubject(topic, partition);
   private static final Stream repo;
 
   static {
     try {
-      var config = new NatsConfig("nats://localhost:4222", stream, File, HashSet.of(subject), 1, 2000, 200);
+      var streams = HashSet.of(new TopicConfig(topic, 1));
+      var config = new NatsConfig("nats://localhost:4222", streams, File, 1, 2000, 200);
       repo = NatsStream.create(config);
     } catch (IOException | InterruptedException | JetStreamApiException e) {
       throw new IllegalArgumentException(e);

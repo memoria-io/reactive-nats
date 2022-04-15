@@ -40,24 +40,16 @@ class NatsUtils {
       return nc.jetStreamManagement().addStream(options);
   }
 
-  public static int getPartition(String subject) {
-    var lastIdx = subject.lastIndexOf(NatsStream.TOPIC_PARTITION_SPLIT_TOKEN);
-    var partition = 0;
-    if (lastIdx > -1) {
-      partition = Integer.parseInt(subject.substring(lastIdx + 1));
-    }
-    return partition;
-  }
-
-  public static JetStreamSubscription pushSubscription(JetStream js, String stream, String subject, long offset)
+  public static JetStreamSubscription pushSubscription(JetStream js, String topic, int partition, long offset)
           throws IOException, JetStreamApiException {
+    var subject = toSubject(topic, partition);
     var cc = ConsumerConfiguration.builder()
                                   .ackPolicy(AckPolicy.None)
                                   .startSequence(offset)
                                   .replayPolicy(ReplayPolicy.Instant)
                                   .deliverPolicy(DeliverPolicy.ByStartSequence)
                                   .build();
-    var pushOptions = PushSubscribeOptions.builder().ordered(true).stream(stream).configuration(cc).build();
+    var pushOptions = PushSubscribeOptions.builder().ordered(true).stream(topic).configuration(cc).build();
     return js.subscribe(subject, pushOptions);
   }
 
@@ -75,20 +67,19 @@ class NatsUtils {
     }
   }
 
-  public static long subjectSize(Connection nc, String stream, String subjectName)
-          throws IOException, JetStreamApiException {
-    return streamInfo(nc, stream).map(StreamInfo::getStreamState)
-                                 .map(StreamState::getSubjects)
-                                 .flatMap(Option::of)
-                                 .map(List::ofAll)
-                                 .getOrElse(List::empty)
-                                 .find(s -> s.getName().equalsIgnoreCase(subjectName))
-                                 .map(Subject::getCount)
-                                 .getOrElse(0L);
+  public static long subjectSize(Connection nc, String topic, int partition) throws IOException, JetStreamApiException {
+    var subject = NatsUtils.toSubject(topic, partition);
+    return streamInfo(nc, topic).map(StreamInfo::getStreamState)
+                                .map(StreamState::getSubjects)
+                                .flatMap(Option::of)
+                                .map(List::ofAll)
+                                .getOrElse(List::empty)
+                                .find(s -> s.getName().equalsIgnoreCase(subject))
+                                .map(Subject::getCount)
+                                .getOrElse(0L);
   }
 
   public static Msg toMsg(String topic, int partition, Message message) {
-    //    var id = Id.of(message.metaData().streamSequence());
     var id = Id.of(message.getHeaders().getFirst(MSG_ID_HEADER));
     var value = new String(message.getData(), StandardCharsets.UTF_8);
     return new Msg(topic, partition, id, value);
