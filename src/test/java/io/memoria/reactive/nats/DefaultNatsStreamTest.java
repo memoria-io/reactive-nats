@@ -3,7 +3,6 @@ package io.memoria.reactive.nats;
 import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
 import io.memoria.reactive.core.stream.Stream;
-import io.memoria.reactive.nats.NatsConfig.TopicConfig;
 import io.nats.client.JetStreamApiException;
 import io.vavr.collection.HashSet;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
@@ -16,8 +15,6 @@ import reactor.test.StepVerifier;
 import java.io.IOException;
 import java.util.Random;
 
-import static io.nats.client.api.StorageType.File;
-
 @TestMethodOrder(OrderAnnotation.class)
 class DefaultNatsStreamTest {
   private static final int MSG_COUNT = 100000;
@@ -28,8 +25,8 @@ class DefaultNatsStreamTest {
 
   static {
     try {
-      var streams = HashSet.of(new TopicConfig(topic, 1));
-      var config = new NatsConfig("nats://localhost:4222", streams, File, 1, 2000, 200);
+      var streams = HashSet.of(TestUtils.streamConfig(topic, partition));
+      var config = new Config("nats://localhost:4222", streams);
       repo = NatsStream.create(config);
     } catch (IOException | InterruptedException | JetStreamApiException e) {
       throw new IllegalArgumentException(e);
