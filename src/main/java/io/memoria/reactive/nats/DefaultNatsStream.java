@@ -3,11 +3,13 @@ package io.memoria.reactive.nats;
 import io.memoria.reactive.core.stream.Msg;
 import io.memoria.reactive.nats.NatsConfig.TopicConfig;
 import io.nats.client.Connection;
+import io.nats.client.ErrorListener;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
 import io.nats.client.Nats;
+import io.nats.client.Options;
 import io.nats.client.PublishOptions;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamConfiguration.Builder;
@@ -31,7 +33,14 @@ class DefaultNatsStream implements NatsStream {
 
   DefaultNatsStream(NatsConfig config) throws IOException, InterruptedException, JetStreamApiException {
     this.config = config;
-    this.nc = Nats.connect(config.url());
+    ErrorListener e = new ErrorListener() {
+      @Override
+      public void errorOccurred(Connection conn, String error) {
+        ErrorListener.super.errorOccurred(conn, error);
+      }
+    };
+    var opt = new Options.Builder().server(config.url()).errorListener(e).build();
+    this.nc = Nats.connect(opt);
     this.js = nc.jetStream();
     var streamInfo = createStreams(config.topics());
     log.info(streamInfo.toString());
