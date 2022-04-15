@@ -2,7 +2,7 @@ package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
-import io.memoria.reactive.nats.Config.StreamConfig;
+import io.memoria.reactive.nats.Config.TopicConfig;
 import io.nats.client.Connection;
 import io.nats.client.ErrorListener;
 import io.nats.client.JetStream;
@@ -35,12 +35,13 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 class Utils {
-  public static final String TOPIC_PARTITION_SPLIT_TOKEN = "_";
-  public static final String MSG_ID_HEADER = "MSG_ID_HEADER";
+  static final String TOPIC_PARTITION_SPLIT_TOKEN = "_";
+  static final String MSG_ID_HEADER = "MSG_ID_HEADER";
+  static final String SUBJECT_EXT = ".stream";
 
   private Utils() {}
 
-  public static Try<StreamInfo> createOrUpdateStream(Connection nc, StreamConfiguration streamConfiguration) {
+  static Try<StreamInfo> createOrUpdateStream(Connection nc, StreamConfiguration streamConfiguration) {
     return Try.of(() -> {
       var streamNames = nc.jetStreamManagement().getStreamNames();
       if (streamNames.contains(streamConfiguration.getName()))
@@ -50,15 +51,21 @@ class Utils {
     });
   }
 
-  public static JetStreamSubscription createSubscription(JetStream js, String topic, int partition, long offset)
+  static JetStreamSubscription createSubscription(JetStream js, String streamName, long offset)
           throws IOException, JetStreamApiException {
-    return pushSubscription(js, topic, partition, offset + 1);
+    return pushSubscription(js, streamName, offset + 1);
   }
 
-  public static void fetchOnce(Connection nc,
-                               JetStreamSubscription sub,
-                               SynchronousSink<Message> sink,
-                               long fetchWaitMillis) {
+  static ErrorListener errorListener() {
+    return new ErrorListener() {
+      @Override
+      public void errorOccurred(Connection conn, String error) {
+        ErrorListener.super.errorOccurred(conn, error);
+      }
+    };
+  }
+
+  static void fetchOnce(Connection nc, JetStreamSubscription sub, SynchronousSink<Message> sink, long fetchWaitMillis) {
     try {
       nc.flushBuffer();
       var msg = sub.nextMessage(Duration.ofMillis(fetchWaitMillis));
@@ -72,27 +79,38 @@ class Utils {
     }
   }
 
-  public static CompletableFuture<PublishAck> publishMsg(JetStream js, Msg msg) {
+  static CompletableFuture<PublishAck> publishMsg(JetStream js, Msg msg) {
     var message = toMessage(msg);
     var opts = PublishOptions.builder().clearExpected().messageId(msg.id().value()).build();
     return js.publishAsync(message, opts);
   }
 
-  public static JetStreamSubscription pushSubscription(JetStream js, String topic, int partition, long offset)
+  static JetStreamSubscription pushSubscription(JetStream js, String streamName, long offset)
           throws IOException, JetStreamApiException {
-    var subject = toSubject(topic, partition);
     var cc = ConsumerConfiguration.builder()
                                   .ackPolicy(AckPolicy.None)
                                   .startSequence(offset)
                                   .replayPolicy(ReplayPolicy.Instant)
                                   .deliverPolicy(DeliverPolicy.ByStartSequence)
                                   .build();
-    var pushOptions = PushSubscribeOptions.builder().ordered(true).stream(topic).configuration(cc).build();
-    return js.subscribe(subject, pushOptions);
+    var pushOptions = PushSubscribeOptions.builder().ordered(true).stream(streamName).configuration(cc).build();
+    var subjectName = toSubjectName(streamName);
+    return js.subscribe(subjectName, pushOptions);
   }
 
-  public static Option<StreamInfo> streamInfo(Connection nc, String streamName)
-          throws IOException, JetStreamApiException {
+  static long size(Connection nc, String streamName) throws IOException, JetStreamApiException {
+    var subjectName = toSubjectName(streamName);
+    return streamInfo(nc, streamName).map(StreamInfo::getStreamState)
+                                     .map(StreamState::getSubjects)
+                                     .flatMap(Option::of)
+                                     .map(List::ofAll)
+                                     .getOrElse(List::empty)
+                                     .find(s -> s.getName().equalsIgnoreCase(subjectName))
+                                     .map(Subject::getCount)
+                                     .getOrElse(0L);
+  }
+
+  static Option<StreamInfo> streamInfo(Connection nc, String streamName) throws IOException, JetStreamApiException {
     try {
       var opts = StreamInfoOptions.allSubjects();
       return Option.some(nc.jetStreamManagement().getStreamInfo(streamName, opts));
@@ -105,60 +123,42 @@ class Utils {
     }
   }
 
-  public static long subjectSize(Connection nc, String topic, int partition) throws IOException, JetStreamApiException {
-    var subject = Utils.toSubject(topic, partition);
-    return streamInfo(nc, topic).map(StreamInfo::getStreamState)
-                                .map(StreamState::getSubjects)
-                                .flatMap(Option::of)
-                                .map(List::ofAll)
-                                .getOrElse(List::empty)
-                                .find(s -> s.getName().equalsIgnoreCase(subject))
-                                .map(Subject::getCount)
-                                .getOrElse(0L);
-  }
-
-  public static Message toMessage(Msg msg) {
-    var subject = toSubject(msg.topic(), msg.partition());
+  static Message toMessage(Msg msg) {
+    var streamName = toStreamName(msg.topic(), msg.partition());
+    var subject = toSubjectName(streamName);
     var headers = new Headers();
     headers.add(MSG_ID_HEADER, msg.id().value());
     var data = msg.value().getBytes(StandardCharsets.UTF_8);
-    return NatsMessage.builder().subject(subject).headers(headers).data(data).build();
+    return NatsMessage.builder().subject(streamName).subject(subject).headers(headers).data(data).build();
   }
 
-  public static Msg toMsg(String topic, int partition, Message message) {
+  static Msg toMsg(String topic, int partition, Message message) {
     var id = Id.of(message.getHeaders().getFirst(MSG_ID_HEADER));
     var value = new String(message.getData(), StandardCharsets.UTF_8);
     return new Msg(topic, partition, id, value);
   }
 
-  public static Options toOptions(Config config) {
+  static Options toOptions(Config config) {
     return new Options.Builder().server(config.url()).errorListener(errorListener()).build();
   }
 
-  public static StreamConfiguration toStreamConfiguration(StreamConfig c) {
+  static StreamConfiguration toStreamConfiguration(TopicConfig c) {
+    var streamName = toStreamName(c.name(), c.partition());
+    var subjectName = toSubjectName(streamName);
     return StreamConfiguration.builder()
                               .storageType(c.storageType())
                               .denyDelete(c.denyDelete())
                               .denyPurge(c.denyPurge())
-                              .name(c.name())
-                              .subjects(c.streamPartitions())
+                              .name(streamName)
+                              .subjects(subjectName)
                               .build();
   }
 
-  public static String toSubject(String topic, int partition) {
+  static String toStreamName(String topic, int partition) {
     return "%s%s%d".formatted(topic, TOPIC_PARTITION_SPLIT_TOKEN, partition);
   }
 
-  public static String topicPartition(String topic, int partition) {
-    return "%s%s%d".formatted(topic, TOPIC_PARTITION_SPLIT_TOKEN, partition);
-  }
-
-  private static ErrorListener errorListener() {
-    return new ErrorListener() {
-      @Override
-      public void errorOccurred(Connection conn, String error) {
-        ErrorListener.super.errorOccurred(conn, error);
-      }
-    };
+  static String toSubjectName(String streamName) {
+    return streamName + SUBJECT_EXT;
   }
 }

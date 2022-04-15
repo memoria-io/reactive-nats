@@ -1,7 +1,7 @@
 package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.stream.Msg;
-import io.memoria.reactive.nats.Config.StreamConfig;
+import io.memoria.reactive.nats.Config.TopicConfig;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamSubscription;
@@ -21,6 +21,7 @@ import static io.memoria.reactive.nats.Config.DEFAULT_FETCH_WAIT;
 import static io.memoria.reactive.nats.Utils.createOrUpdateStream;
 import static io.memoria.reactive.nats.Utils.createSubscription;
 import static io.memoria.reactive.nats.Utils.toMsg;
+import static io.memoria.reactive.nats.Utils.toStreamName;
 
 class DefaultNatsStream implements NatsStream {
   private static final Logger log = LoggerFactory.getLogger(DefaultNatsStream.class.getName());
@@ -47,12 +48,14 @@ class DefaultNatsStream implements NatsStream {
 
   @Override
   public Mono<Long> size(String topic, int partition) {
-    return Mono.fromCallable(() -> Utils.size(nc, topic, partition));
+    var streamName = Utils.toStreamName(topic, partition);
+    return Mono.fromCallable(() -> Utils.size(nc, streamName));
   }
 
   @Override
   public Flux<Msg> subscribe(String topic, int partition, long offset) {
-    return Mono.fromCallable(() -> createSubscription(js, topic, partition, offset))
+    var streamName = toStreamName(topic, partition);
+    return Mono.fromCallable(() -> createSubscription(js, streamName, offset))
                .flatMapMany(sub -> this.fetch(sub, topic))
                .map(m -> toMsg(topic, partition, m));
   }
@@ -60,7 +63,7 @@ class DefaultNatsStream implements NatsStream {
   private Flux<Message> fetch(JetStreamSubscription sub, String topic) {
     var wait = config.streams()
                      .find(s -> s.name().equalsIgnoreCase(topic))
-                     .map(StreamConfig::fetchWaitMillis)
+                     .map(TopicConfig::fetchWaitMillis)
                      .getOrElse(DEFAULT_FETCH_WAIT);
     return Flux.generate((SynchronousSink<Message> sink) -> Utils.fetchOnce(nc, sub, sink, wait)).repeat();
   }
