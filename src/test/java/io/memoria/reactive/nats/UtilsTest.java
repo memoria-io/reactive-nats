@@ -2,14 +2,17 @@ package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.id.Id;
 import io.memoria.reactive.core.stream.Msg;
+import io.nats.client.Connection;
+import io.nats.client.JetStream;
+import io.nats.client.Nats;
+import io.nats.client.impl.NatsMessage;
+import io.vavr.control.Try;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class UtilsTest {
-  @Test
-  void toMsg() {
-    
-  }
+  private static final Connection nc = Try.of(() -> Nats.connect("nats://localhost:4222")).get();
+  private static final JetStream js = Try.of(nc::jetStream).get();
 
   @Test
   void toMessage() {
@@ -19,14 +22,7 @@ public class UtilsTest {
   }
 
   @Test
-  void toStreamName() {
-    var actual = Utils.toStreamName("topic", 0);
-    Assertions.assertEquals("topic_0", actual);
-  }
-
-  @Test
-  void toSubjectName() {
-    var actual = Utils.toSubjectName("stream");
-    Assertions.assertEquals("stream.stream", actual);
+  void toMsg() {
+    
   }
 }

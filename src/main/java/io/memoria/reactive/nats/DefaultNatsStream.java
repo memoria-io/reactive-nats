@@ -1,7 +1,6 @@
 package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.stream.Msg;
-import io.memoria.reactive.nats.Config.TopicConfig;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamSubscription;
@@ -19,9 +18,7 @@ import java.io.IOException;
 
 import static io.memoria.reactive.nats.Config.DEFAULT_FETCH_WAIT;
 import static io.memoria.reactive.nats.Utils.createOrUpdateStream;
-import static io.memoria.reactive.nats.Utils.createSubscription;
-import static io.memoria.reactive.nats.Utils.toMsg;
-import static io.memoria.reactive.nats.Utils.toStreamName;
+import static io.memoria.reactive.nats.Utils.pushSubscription;
 
 class DefaultNatsStream implements NatsStream {
   private static final Logger log = LoggerFactory.getLogger(DefaultNatsStream.class.getName());
@@ -33,7 +30,7 @@ class DefaultNatsStream implements NatsStream {
     this.config = config;
     this.nc = Nats.connect(Utils.toOptions(config));
     this.js = nc.jetStream();
-    config.streams()
+    config.topics()
           .map(Utils::toStreamConfiguration)
           .map(c -> createOrUpdateStream(nc, c))
           .map(Try::get)
@@ -48,23 +45,19 @@ class DefaultNatsStream implements NatsStream {
 
   @Override
   public Mono<Long> size(String topic, int partition) {
-    var streamName = Utils.toStreamName(topic, partition);
-    return Mono.fromCallable(() -> Utils.size(nc, streamName));
+    return Mono.fromCallable(() -> Utils.size(nc, TP.create(topic, partition)));
   }
 
   @Override
   public Flux<Msg> subscribe(String topic, int partition, long offset) {
-    var streamName = toStreamName(topic, partition);
-    return Mono.fromCallable(() -> createSubscription(js, streamName, offset))
-               .flatMapMany(sub -> this.fetch(sub, topic))
-               .map(m -> toMsg(topic, partition, m));
+    var tp = TP.create(topic, partition);
+    var waitMillis = config.find(topic).map(TPConfig::fetchWaitMillis).getOrElse(DEFAULT_FETCH_WAIT);
+    return Mono.fromCallable(() -> pushSubscription(js, tp, offset + 1))
+               .flatMapMany(sub -> this.fetch(sub, waitMillis))
+               .map(Utils::toMsg);
   }
 
-  private Flux<Message> fetch(JetStreamSubscription sub, String topic) {
-    var wait = config.streams()
-                     .find(s -> s.name().equalsIgnoreCase(topic))
-                     .map(TopicConfig::fetchWaitMillis)
-                     .getOrElse(DEFAULT_FETCH_WAIT);
+  private Flux<Message> fetch(JetStreamSubscription sub, long wait) {
     return Flux.generate((SynchronousSink<Message> sink) -> Utils.fetchOnce(nc, sub, sink, wait)).repeat();
   }
 
