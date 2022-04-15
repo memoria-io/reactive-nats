@@ -24,8 +24,8 @@ public record Config(String url, Set<StreamConfig> streams) {
       }
     }
 
-    public java.util.List<String> streamPartitions() {
-      return List.range(0, partitions).map(i -> Utils.topicPartition(name, i)).toJavaList();
+    public java.util.List<String> names() {
+      return List.range(0, partitions).map(i -> Utils.toStreamName(name, i)).toJavaList();
     }
   }
 }
