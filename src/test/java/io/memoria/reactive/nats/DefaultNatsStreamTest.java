@@ -35,14 +35,14 @@ class DefaultNatsStreamTest {
 
   @Test
   @Order(0)
-  void sizeBefore() {
+  void t0_sizeBefore() {
     var size = repo.size(topic, partition);
     StepVerifier.create(size).expectNext(0L).verifyComplete();
   }
 
   @Test
   @Order(1)
-  void publish() throws InterruptedException {
+  void t1_publish() throws InterruptedException {
     // Given
     var msgs = Flux.range(0, MSG_COUNT).map(i -> new Msg(topic, partition, Id.of(i), "hello" + i));
     // When
@@ -54,7 +54,7 @@ class DefaultNatsStreamTest {
 
   @Test
   @Order(2)
-  void subscribe() {
+  void t2_subscribe() {
     // Given previous publish ran successfully
     var offset = 500;
     // When
@@ -65,7 +65,7 @@ class DefaultNatsStreamTest {
 
   @Test
   @Order(3)
-  void sizeAfter() {
+  void t3_sizeAfter() {
     var size = repo.size(topic, partition);
     StepVerifier.create(size).expectNext((long) MSG_COUNT).verifyComplete();
   }

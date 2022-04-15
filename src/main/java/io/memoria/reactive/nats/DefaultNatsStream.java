@@ -57,15 +57,15 @@ class DefaultNatsStream implements NatsStream {
                .map(m -> toMsg(topic, partition, m));
   }
 
-  private Mono<Msg> publish(Msg msg) {
-    return Mono.fromCallable(() -> Utils.publishMsg(js, msg)).flatMap(Mono::fromFuture).thenReturn(msg);
-  }
-
   private Flux<Message> fetch(JetStreamSubscription sub, String topic) {
     var wait = config.streams()
                      .find(s -> s.name().equalsIgnoreCase(topic))
                      .map(StreamConfig::fetchWaitMillis)
                      .getOrElse(DEFAULT_FETCH_WAIT);
     return Flux.generate((SynchronousSink<Message> sink) -> Utils.fetchOnce(nc, sub, sink, wait)).repeat();
+  }
+
+  private Mono<Msg> publish(Msg msg) {
+    return Mono.fromCallable(() -> Utils.publishMsg(js, msg)).flatMap(Mono::fromFuture).thenReturn(msg);
   }
 }

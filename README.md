@@ -3,12 +3,13 @@
 Nats implementations of the [Reactive library](https://github.com/memoria-io/reactive) streams.
 
 ## TODOs
+
 * Code clean up
 
 ## Done
 
 * Control flow listener log issue
-  * Solved using opt with error listener
+    * Solved using opt with error listener
 * Size, publish, subscribe
 
 ## References:
