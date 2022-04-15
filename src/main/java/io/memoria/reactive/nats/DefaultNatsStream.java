@@ -6,20 +6,12 @@ import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
-import io.nats.client.MessageHandler;
 import io.nats.client.Nats;
 import io.nats.client.PublishOptions;
-import io.nats.client.PushSubscribeOptions;
-import io.nats.client.api.AckPolicy;
-import io.nats.client.api.ConsumerConfiguration;
-import io.nats.client.api.DeliverPolicy;
-import io.nats.client.api.ReplayPolicy;
 import io.nats.client.api.StreamConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.FluxSink.OverflowStrategy;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 
@@ -60,10 +52,9 @@ class DefaultNatsStream implements NatsStream {
   @Override
   public Flux<Msg> subscribe(String topic, int partition, long offset) {
     var subject = NatsUtils.toSubject(topic, partition);
-    return Mono.fromCallable(() -> NatsUtils.pushSubscription(js, config.streamName(), subject, offset + 1))
-               .flatMapMany(this::fetchMsg)
+    return Mono.fromCallable(() -> createSubscription(subject, offset))
+               .flatMapMany(this::fetch)
                .map(m -> NatsUtils.toMsg(topic, partition, m));
-    //    return sub(config.streamName(), subject, offset + 1).map(m -> NatsUtils.toMsg(topic, partition, m));
   }
 
   private Mono<Msg> publish(Msg msg) {
@@ -74,44 +65,26 @@ class DefaultNatsStream implements NatsStream {
     }).flatMap(Mono::fromFuture).thenReturn(msg);
   }
 
-  private Flux<Message> fetchMsg(JetStreamSubscription sub) {
-    return Flux.generate((SynchronousSink<Message> sink) -> {
-      try {
-        nc.flushBuffer();
-        var msg = sub.nextMessage(Duration.ofMillis(config.fetchWaitMillis()));
-        // TODO handle completion without error
-        if (msg != null) {
-          sink.next(msg);
-          msg.ack();
-        }
-        sink.complete();
-      } catch (IOException | InterruptedException e) {
-        sink.error(e);
-      }
-    }).repeat();
+  private JetStreamSubscription createSubscription(String subject, long offset)
+          throws IOException, JetStreamApiException {
+    return NatsUtils.pushSubscription(js, config.streamName(), subject, offset + 1);
   }
 
-  public Flux<Message> sub(String stream, String subject, long offset) {
-    var disp = nc.createDispatcher();
-    var cc = ConsumerConfiguration.builder()
-                                  .ackPolicy(AckPolicy.None)
-                                  .startSequence(offset)
-                                  .replayPolicy(ReplayPolicy.Instant)
-                                  .deliverPolicy(DeliverPolicy.ByStartSequence)
-                                  .build();
-    var pushOptions = PushSubscribeOptions.builder().ordered(true).stream(stream).configuration(cc).build();
-    boolean autoAck = true;
-    var f = Flux.push((FluxSink<Message> sink) -> {
-      MessageHandler handler = (msg) -> {
+  private Flux<Message> fetch(JetStreamSubscription sub) {
+    return Flux.generate((SynchronousSink<Message> sink) -> fetchOnce(sub, sink)).repeat();
+  }
+
+  private void fetchOnce(JetStreamSubscription sub, SynchronousSink<Message> sink) {
+    try {
+      nc.flushBuffer();
+      var msg = sub.nextMessage(Duration.ofMillis(config.fetchWaitMillis()));
+      if (msg != null) {
         sink.next(msg);
         msg.ack();
-      };
-      try {
-        var subscription = js.subscribe(subject, null, disp, handler, autoAck, pushOptions);
-      } catch (IOException | JetStreamApiException e) {
-        sink.error(e);
       }
-    }, OverflowStrategy.ERROR);
-    return f;
+      sink.complete();
+    } catch (IOException | InterruptedException e) {
+      sink.error(e);
+    }
   }
 }

@@ -23,8 +23,8 @@ class DefaultNatsStreamTest {
   private static final Random r = new Random();
   private static final String stream = "some_new_stream" + r.nextInt(1000);
   private static final String topic = stream + ".topic";
-  private static final int partition = 0;
   private static final String subject = NatsUtils.toSubject(topic, partition);
+  private static final int partition = 0;
   private static final Stream repo;
 
   static {

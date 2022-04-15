@@ -7,7 +7,6 @@ import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.Message;
-import io.nats.client.MessageHandler;
 import io.nats.client.PushSubscribeOptions;
 import io.nats.client.api.AckPolicy;
 import io.nats.client.api.ConsumerConfiguration;
@@ -22,8 +21,6 @@ import io.nats.client.impl.Headers;
 import io.nats.client.impl.NatsMessage;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -63,7 +60,6 @@ class NatsUtils {
     var pushOptions = PushSubscribeOptions.builder().ordered(true).stream(stream).configuration(cc).build();
     return js.subscribe(subject, pushOptions);
   }
-
 
   public static Option<StreamInfo> streamInfo(Connection nc, String streamName)
           throws IOException, JetStreamApiException {
