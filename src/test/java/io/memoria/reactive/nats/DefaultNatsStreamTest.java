@@ -5,6 +5,7 @@ import io.memoria.reactive.core.stream.Msg;
 import io.memoria.reactive.core.stream.Stream;
 import io.nats.client.JetStreamApiException;
 import io.vavr.collection.HashSet;
+import io.vavr.collection.List;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -57,10 +58,12 @@ class DefaultNatsStreamTest {
   void t2_subscribe() {
     // Given previous publish ran successfully
     var offset = 500;
+    var msgs = List.range(offset, MSG_COUNT).map(i -> new Msg(topic, partition, Id.of(i), "hello" + i));
     // When
-    var sub = repo.subscribe(topic, partition, offset).take(MSG_COUNT - offset).map(Msg::id);
+    var sub = repo.subscribe(topic, partition, offset).take(MSG_COUNT - offset);
     // Given
     StepVerifier.create(sub).expectNextCount(MSG_COUNT - offset).verifyComplete();
+    StepVerifier.create(sub).expectNextSequence(msgs).verifyComplete();
   }
 
   @Test
