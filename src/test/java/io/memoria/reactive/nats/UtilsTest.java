@@ -18,14 +18,14 @@ public class UtilsTest {
   @Test
   void toMessage() {
     var message = Utils.toMessage(new Msg("topic", 0, Id.of(1000), "hello world"));
-    Assertions.assertEquals(message.getHeaders().getFirst(NatsStream.MESSAGE_ID_HEADER), "1000");
+    Assertions.assertEquals(message.getHeaders().getFirst(Utils.ID_HEADER), "1000");
     Assertions.assertEquals(message.getSubject(), "topic_0.subject");
   }
 
   @Test
   void toMsg() {
     var h = new Headers();
-    h.add(NatsStream.MESSAGE_ID_HEADER, "1000");
+    h.add(Utils.ID_HEADER, "1000");
     var message = NatsMessage.builder().data("hello world").subject("topic_0.subject").headers(h).build();
     var msg = Utils.toMsg(message);
     Assertions.assertEquals("topic", msg.topic());

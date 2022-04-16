@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 class Utils {
+  public static final String ID_HEADER = "ID_HEADER";
 
   private Utils() {}
 
@@ -115,12 +116,12 @@ class Utils {
   static Message toMessage(Msg msg) {
     var tp = TP.fromMsg(msg);
     var headers = new Headers();
-    headers.add(NatsStream.MESSAGE_ID_HEADER, msg.id().value());
+    headers.add(ID_HEADER, msg.id().value());
     return NatsMessage.builder().subject(tp.subjectName()).headers(headers).data(msg.value()).build();
   }
 
   static Msg toMsg(Message message) {
-    var id = Id.of(message.getHeaders().getFirst(NatsStream.MESSAGE_ID_HEADER));
+    var id = Id.of(message.getHeaders().getFirst(ID_HEADER));
     var value = new String(message.getData(), StandardCharsets.UTF_8);
     var tp = TP.fromSubject(message.getSubject());
     return new Msg(tp.topic(), tp.partition(), id, value);
