@@ -34,7 +34,6 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 class Utils {
-  static final String MSG_ID_HEADER = "MSG_ID_HEADER";
 
   private Utils() {}
 
@@ -95,7 +94,7 @@ class Utils {
                                           .flatMap(Option::of)
                                           .map(List::ofAll)
                                           .getOrElse(List::empty)
-                                          .find(s -> s.getName().equalsIgnoreCase(TP.subjectName()))
+                                          .find(s -> s.getName().equals(TP.subjectName()))
                                           .map(Subject::getCount)
                                           .getOrElse(0L);
   }
@@ -116,15 +115,14 @@ class Utils {
   static Message toMessage(Msg msg) {
     var tp = TP.fromMsg(msg);
     var headers = new Headers();
-    headers.add(MSG_ID_HEADER, msg.id().value());
-    var data = msg.value().getBytes(StandardCharsets.UTF_8);
-    return NatsMessage.builder().subject(tp.subjectName()).headers(headers).data(data).build();
+    headers.add(NatsStream.MESSAGE_ID_HEADER, msg.id().value());
+    return NatsMessage.builder().subject(tp.subjectName()).headers(headers).data(msg.value()).build();
   }
 
   static Msg toMsg(Message message) {
-    var id = Id.of(message.getHeaders().getFirst(MSG_ID_HEADER));
+    var id = Id.of(message.getHeaders().getFirst(NatsStream.MESSAGE_ID_HEADER));
     var value = new String(message.getData(), StandardCharsets.UTF_8);
-    var tp = TP.fromMessage(message);
+    var tp = TP.fromSubject(message.getSubject());
     return new Msg(tp.topic(), tp.partition(), id, value);
   }
 

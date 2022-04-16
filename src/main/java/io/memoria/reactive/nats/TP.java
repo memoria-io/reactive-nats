@@ -1,13 +1,10 @@
 package io.memoria.reactive.nats;
 
 import io.memoria.reactive.core.stream.Msg;
-import io.nats.client.Message;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
 
 public record TP(String topic, int partition) {
   public static final String SPLIT_TOKEN = "_";
-  public static final String SUBJECT = ".subject";
+  public static final String SUBJECT_EXT = ".subject";
 
   public TP {
     validateName(topic, partition);
@@ -18,7 +15,7 @@ public record TP(String topic, int partition) {
   }
 
   public String subjectName() {
-    return streamName() + SUBJECT;
+    return streamName() + SUBJECT_EXT;
   }
 
   private void validateName(String name, int partition) {
@@ -34,25 +31,15 @@ public record TP(String topic, int partition) {
     return new TP(topic, partition);
   }
 
-  public static TP fromMessage(Message message) {
-    var streamName = message.metaData().getStream();
-    var tup = topicPartition(streamName);
-    return new TP(tup._1, tup._2);
-  }
-
   public static TP fromMsg(Msg msg) {
     return new TP(msg.topic(), msg.partition());
   }
 
-  public static TP fromStreamName(String streamName) {
-    var tup = topicPartition(streamName);
-    return new TP(tup._1, tup._2);
-  }
-
-  private static Tuple2<String, Integer> topicPartition(String streamName) {
-    var s = streamName.split(SPLIT_TOKEN);
+  public static TP fromSubject(String subject) {
+    var idx = subject.indexOf(SUBJECT_EXT);
+    var s = subject.substring(0, idx).split(SPLIT_TOKEN);
     var topic = s[0];
     var partition = Integer.parseInt(s[1]);
-    return Tuple.of(topic, partition);
+    return TP.create(topic, partition);
   }
 }
